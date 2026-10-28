@@ -31,6 +31,7 @@ index 0000000..0000000 100644
 +		if (SecureDTGetProperty(entry, "skip-physical-timer-disable", &ptimer_prop, &ptimer_size) == kSuccess) {
 +			sweet_skip_ptimer_disable = 1;
 +		}
++		kprintf("LISA DEBUG: skip_ptimer set to %u\n", sweet_skip_ptimer_disable);
  		kprintf("SWEET GIC: virtual timer INTID %u\n", sweet_vtimer_intid);
  #endif
  
@@ -38,13 +39,16 @@ diff --git a/osfmk/arm64/machine_routines.c b/osfmk/arm64/machine_routines.c
 index 0000000..0000000 100644
 --- a/osfmk/arm64/machine_routines.c
 +++ b/osfmk/arm64/machine_routines.c
-@@ -2274,6 +2274,10 @@
+@@ -2274,6 +2274,11 @@
  
  	__builtin_arm_wsr64("CNTV_CTL_EL0", cntvctl);
  	/* disable the physical timer as a precaution, as its registers reset to architecturally unknown values */
 +#if defined(ARM64_BOARD_CONFIG_SWEET)
 +	extern uint32_t sweet_skip_ptimer_disable;
++	kprintf("LISA DEBUG: at machine_routines, flag=%u\n", sweet_skip_ptimer_disable);
 +	if (!sweet_skip_ptimer_disable)
++#else
++	kprintf("LISA DEBUG: ARM64_BOARD_CONFIG_SWEET not defined here\n");
 +#endif
  	__builtin_arm_wsr64("CNTP_CTL_EL0", CNTP_CTL_EL0_IMASKED);
  }
