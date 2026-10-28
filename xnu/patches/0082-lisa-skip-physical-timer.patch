@@ -1,0 +1,49 @@
+--- a/pexpert/pexpert/arm/protos.h
++++ b/pexpert/pexpert/arm/protos.h
+@@ -38,6 +38,7 @@
+ void pe_init_fiq(void);
+ #if defined(ARM64_BOARD_CONFIG_SWEET)
+ extern uint32_t sweet_vtimer_intid;
++extern uint32_t sweet_skip_ptimer_disable;
+ #endif
+ 
+ #ifdef PRIVATE
+--- a/pexpert/arm/pe_fiq.c
++++ b/pexpert/arm/pe_fiq.c
+@@ -20,6 +20,7 @@
+ #if defined(SWEET)
+ /* Phone default; QEMU virt wires the architected virtual timer to INTID 27. */
+ SECURITY_READ_ONLY_LATE(uint32_t) sweet_vtimer_intid = SWEET_VTIMER_INTID;
++SECURITY_READ_ONLY_LATE(uint32_t) sweet_skip_ptimer_disable = 0;
+ #endif
+ 
+ static vm_offset_t gicd_base;
+@@ -116,6 +117,12 @@
+ 			}
+ 			sweet_vtimer_intid = intid;
+ 		}
++		void const *ptimer_prop;
++		unsigned int ptimer_size;
++		if (SecureDTGetProperty(entry, "skip-physical-timer-disable", &ptimer_prop, &ptimer_size) == kSuccess) {
++			sweet_skip_ptimer_disable = 1;
++		}
++		kprintf("LISA DEBUG: skip_ptimer set to %u\n", sweet_skip_ptimer_disable);
+ 		kprintf("SWEET GIC: virtual timer INTID %u\n", sweet_vtimer_intid);
+ #endif
+ 
+--- a/osfmk/arm64/machine_routines.c
++++ b/osfmk/arm64/machine_routines.c
+@@ -2274,6 +2274,13 @@
+ 
+ 	__builtin_arm_wsr64("CNTV_CTL_EL0", cntvctl);
+ 	/* disable the physical timer as a precaution, as its registers reset to architecturally unknown values */
++	#if defined(ARM64_BOARD_CONFIG_SWEET)
++	extern uint32_t sweet_skip_ptimer_disable;
++	kprintf("LISA DEBUG: at machine_routines, flag=%u\n", sweet_skip_ptimer_disable);
++	if (!sweet_skip_ptimer_disable)
++#else
++	kprintf("LISA DEBUG: macro not defined here\n");
++#endif
+ 	__builtin_arm_wsr64("CNTP_CTL_EL0", CNTP_CTL_EL0_IMASKED);
+ }
+ 
